@@ -1,0 +1,3 @@
+[assets]
+directory = "./"   # or wherever your assets live
+not_found_handling = "404-page"
