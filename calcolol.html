@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#12171b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Calcolol</title>
+<style>
+:root{
+  --bg:#12171b;
+  --sheet:#171c20;
+  --chip:rgba(38,42,46,.92);
+  --lav:#bbc2ff;
+  --blue:#0a0aa5;
+  --ink:#e8eaee;
+  --muted:#99a1ab;
+  --active:#1e2434;
+  --danger:#ff5a5f;
+  --font:-apple-system,"SF Pro Text",Roboto,"Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+[hidden]{display:none!important}
+html,body{margin:0;width:100%;height:100%;background:#000;color:var(--ink);font-family:var(--font);overscroll-behavior:none}
+body{position:fixed;inset:0;overflow:hidden}
+button{font-family:inherit;color:inherit;cursor:pointer}
+svg{display:block}
+img{-webkit-user-drag:none}
+
+.screen{position:fixed;inset:0;display:none}
+.screen.on{display:flex}
+
+/* ---------- Pantalla 1: elegir imagen ---------- */
+#screenPick,#screenPerm{
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:var(--bg);
+  padding:calc(env(safe-area-inset-top,0px) + 24px) 28px calc(env(safe-area-inset-bottom,0px) + 24px);
+}
+.frame{position:relative;width:min(58vw,230px);aspect-ratio:1;display:grid;place-items:center;margin-bottom:34px}
+.frame i{position:absolute;width:38px;height:38px;border:4px solid var(--lav)}
+.frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-radius:16px 0 0 0}
+.frame i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0;border-radius:0 16px 0 0}
+.frame i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 16px}
+.frame i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 16px 0}
+.frame svg{width:64px;height:64px;color:var(--lav)}
+h1{margin:0 0 12px;font-size:30px;line-height:1.15;font-weight:650;letter-spacing:-.02em}
+.lead{margin:0 0 32px;max-width:30ch;color:var(--muted);font-size:17px;line-height:1.45}
+.primary{
+  border:0;border-radius:30px;background:var(--lav);color:#10143a;
+  font-size:18px;font-weight:650;padding:18px 40px;min-width:240px;
+}
+.primary:active{transform:scale(.97)}
+.ghost{border:0;background:none;color:var(--lav);font-size:16px;font-weight:600;padding:14px 20px;margin-top:6px}
+.note{margin:22px 0 0;color:var(--muted);font-size:14px;line-height:1.4;max-width:34ch}
+
+/* ---------- Pantalla 2: permiso de cámara ---------- */
+#permThumb{width:132px;height:132px;object-fit:cover;border-radius:20px;margin-bottom:26px;background:#222}
+#permTitle{margin:0 0 10px;font-size:22px;font-weight:650}
+#permText{margin:0 0 26px;color:var(--muted);font-size:16px;line-height:1.45;max-width:32ch}
+.spinner{width:30px;height:30px;border-radius:50%;border:3px solid #2a3040;border-top-color:var(--lav);animation:spin .9s linear infinite;margin-bottom:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- Pantalla 3: calco ---------- */
+#screenTrace{background:#000}
+#stage{position:absolute;inset:0;overflow:hidden;background:#000}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:50% 50%}
+#gest{position:absolute;inset:0;touch-action:none}
+#overlay{position:absolute;left:50%;top:50%;transform-origin:50% 50%;pointer-events:none;will-change:transform,opacity}
+
+.round{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 16px);left:16px;
+  width:52px;height:52px;border-radius:50%;border:0;background:#25201f;color:#fff;display:grid;place-items:center;
+}
+.round svg{width:26px;height:26px}
+
+#recInfo{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 26px);left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:20px;background:rgba(20,22,26,.8);
+  font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;
+}
+#recInfo b{width:10px;height:10px;border-radius:50%;background:var(--danger);animation:blink 1s steps(2,start) infinite}
+@keyframes blink{50%{opacity:.2}}
+
+#result{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 16px);left:78px;right:16px;height:52px;
+  display:flex;align-items:center;gap:10px;padding:0 6px 0 6px;border-radius:26px;background:rgba(24,27,32,.92);
+}
+#resThumb{width:40px;height:40px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#2b3040;flex:none;color:var(--lav)}
+#resThumb img{width:100%;height:100%;object-fit:cover}
+#resThumb svg{width:22px;height:22px}
+#resText{flex:1;font-size:15px;font-weight:600;white-space:nowrap}
+#resSave{border:0;border-radius:20px;background:var(--lav);color:#10143a;font-weight:650;font-size:15px;padding:10px 16px}
+#resClose{border:0;background:none;color:var(--muted);width:36px;height:36px;display:grid;place-items:center}
+#resClose svg{width:20px;height:20px}
+
+#toast{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 82px);left:50%;transform:translate(-50%,-6px);
+  max-width:86vw;padding:11px 18px;border-radius:22px;background:rgba(20,22,26,.92);color:#fff;
+  font-size:15px;line-height:1.3;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+#hint{
+  position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  transition:opacity .4s;
+}
+#hint.off{opacity:0}
+#hint svg{width:120px;height:120px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+#hint circle{fill:#d9695d;stroke:#1a1a8c;stroke-width:3}
+#hint path{fill:none;stroke:#7a82ff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+#hint .f1{animation:f1 1.8s ease-in-out infinite}
+#hint .f2{animation:f2 1.8s ease-in-out infinite}
+@keyframes f1{0%,100%{transform:translate(4px,-4px)}50%{transform:translate(-10px,10px)}}
+@keyframes f2{0%,100%{transform:translate(-4px,4px)}50%{transform:translate(10px,-10px)}}
+#hint p{margin:0;padding:8px 14px;border-radius:18px;background:rgba(20,22,26,.78);font-size:15px;font-weight:600;text-align:center;max-width:70vw}
+
+#shutter{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#shutter.go{animation:shot .28s ease-out}
+@keyframes shot{0%{opacity:.85}100%{opacity:0}}
+
+.dock{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:14px;pointer-events:none}
+.floating{display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.floating>*{pointer-events:auto}
+.right{display:flex;gap:12px}
+.sq{
+  width:52px;height:52px;border-radius:16px;border:0;background:var(--chip);color:#fff;display:grid;place-items:center;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+}
+.sq svg{width:26px;height:26px}
+.sq.on{background:var(--lav);color:#10143a}
+.sq.na{opacity:.55}
+.pill{display:flex;align-items:center;height:52px;border-radius:16px;background:var(--chip);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.pill button{width:56px;height:52px;border:0;background:none;color:#fff;display:grid;place-items:center}
+.pill svg{width:26px;height:26px}
+.pill .sep{width:1px;height:30px;background:rgba(255,255,255,.28)}
+.pill.rec{box-shadow:0 0 0 2px var(--danger) inset}
+#btnVideo .ico-stop{display:none;color:var(--danger)}
+.pill.rec #btnVideo .ico-vid{display:none}
+.pill.rec #btnVideo .ico-stop{display:block}
+
+.sheet{
+  pointer-events:auto;background:var(--sheet);border-radius:28px 28px 0 0;
+  padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 8px);
+}
+.panels{padding:6px 8px 0}
+.panels.closed{display:none}
+.panel{display:none}
+.panel.on{display:block;animation:fade .18s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.slider{position:relative;height:76px;touch-action:none;--p:.5;margin:0 4px}
+.slider:focus-visible{outline:2px solid var(--lav);outline-offset:2px;border-radius:12px}
+.seg{position:absolute;top:16px;height:44px;border-radius:22px;overflow:hidden}
+.seg.fill{left:0;background:var(--lav);width:max(0px,calc(var(--p) * (100% - 6px) - 8px))}
+.seg.rest{left:calc(var(--p) * (100% - 6px) + 14px);right:0;background:var(--blue)}
+.seg.rest::after{content:"";position:absolute;right:15px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#e9ebff}
+.handle{position:absolute;top:0;left:calc(var(--p) * (100% - 6px));width:6px;height:76px;border-radius:3px;background:var(--lav)}
+.bubble{
+  position:absolute;top:-44px;left:calc(var(--p) * (100% - 6px) + 3px);transform:translateX(-50%);
+  min-width:56px;padding:7px 12px;border-radius:14px;background:var(--lav);color:#10143a;
+  font-size:15px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;
+  opacity:0;pointer-events:none;transition:opacity .12s;
+}
+.slider.drag .bubble{opacity:1}
+
+.chips{display:flex;gap:12px;height:76px;align-items:center;margin:0 4px}
+.chip{
+  flex:1;height:52px;border-radius:26px;border:2px solid #323946;background:none;color:var(--ink);
+  font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.chip svg{width:22px;height:22px}
+.chip[aria-pressed=true]{background:var(--lav);border-color:var(--lav);color:#10143a}
+
+.tabs{display:flex;gap:2px;margin-top:4px}
+.tab{
+  flex:1;border:0;background:none;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:11px 0 9px;border-radius:30px;font-size:15px;font-weight:500;
+}
+.tab svg{width:30px;height:30px;color:var(--lav)}
+.tab[aria-pressed=true]{background:var(--active)}
+
+@media (prefers-reduced-motion:reduce){
+  #hint .f1,#hint .f2,#recInfo b,.spinner{animation:none}
+  .panel.on{animation:none}
+}
+@media (max-height:640px){
+  .slider,.chips{height:64px}
+  .seg{top:10px}
+  .handle{height:64px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 1. Elegir imagen ============ -->
+<section id="screenPick" class="screen on">
+  <div class="frame" aria-hidden="true">
+    <i></i><i></i><i></i><i></i>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5.5-5.5L13 16l3-3 5 5"/>
+    </svg>
+  </div>
+  <h1>Calca con la cámara</h1>
+  <p class="lead">Elige la imagen que quieres dibujar. Después apunta la cámara a tu hoja y traza encima.</p>
+  <button class="primary" id="btnPick">Elegir imagen</button>
+  <p class="note">La imagen se queda en tu teléfono. No se sube a ningún sitio.</p>
+  <input type="file" id="file" accept="image/*" hidden>
+</section>
+
+<!-- ============ 2. Permiso de cámara ============ -->
+<section id="screenPerm" class="screen">
+  <img id="permThumb" alt="Imagen elegida">
+  <div class="spinner" id="permSpin"></div>
+  <h2 id="permTitle">Abriendo la cámara</h2>
+  <p id="permText">Acepta el permiso de cámara cuando el navegador te lo pida.</p>
+  <button class="primary" id="btnRetry" hidden>Reintentar</button>
+  <button class="ghost" id="btnChange" hidden>Elegir otra imagen</button>
+</section>
+
+<!-- ============ 3. Calco ============ -->
+<section id="screenTrace" class="screen">
+  <div id="stage">
+    <video id="cam" playsinline muted autoplay></video>
+    <div id="gest"><canvas id="overlay"></canvas></div>
+    <div id="shutter"></div>
+  </div>
+
+  <button class="round" id="btnBack" aria-label="Volver">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+  </button>
+
+  <div id="recInfo" hidden><b></b><span id="recTime">00:00</span></div>
+
+  <div id="result" hidden>
+    <div id="resThumb"></div>
+    <span id="resText"></span>
+    <button id="resSave">Guardar</button>
+    <button id="resClose" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+
+  <div id="toast" role="status"></div>
+
+  <div id="hint">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <path d="M38 84l-9 9M29 93v-8M29 93h8"/>
+      <path d="M84 36l9-9M93 27v8M93 27h-8"/>
+      <g class="f1"><circle cx="50" cy="70" r="11"/></g>
+      <g class="f2"><circle cx="72" cy="50" r="11"/></g>
+    </svg>
+    <p>Pellizca con dos dedos para mover y cambiar el tamaño</p>
+  </div>
+
+  <div class="dock" id="dock">
+    <div class="floating">
+      <button class="sq" id="btnLock" aria-label="Bloquear imagen" aria-pressed="false">
+        <svg class="ico-open" viewBox="0 0 24 24" fill="currentColor"><rect x="4.5" y="11" width="15" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="16" r="1.6" fill="#2a2e33"/></svg>
+        <svg class="ico-closed" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="4.5" y="11" width="15" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="16" r="1.6" fill="#2a2e33"/></svg>
+      </button>
+      <div class="right">
+        <button class="sq" id="btnFlash" aria-label="Linterna" aria-pressed="false">
+          <svg class="ico-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L5 13h6l-1 9 8-11h-6l1-9z" fill="currentColor" stroke="none"/><path d="M3.5 3.5l17 17" stroke-width="2.4"/></svg>
+          <svg class="ico-on" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M13 2L5 13h6l-1 9 8-11h-6l1-9z"/></svg>
+        </button>
+        <div class="pill" id="pill">
+          <button id="btnPhoto" aria-label="Tomar foto">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm8 2.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg>
+          </button>
+          <span class="sep"></span>
+          <button id="btnVideo" aria-label="Grabar video">
+            <svg class="ico-vid" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="13.5" height="12" rx="2.5"/><path d="M17 10.2L22 7v10l-5-3.2z"/></svg>
+            <svg class="ico-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet">
+      <div class="panels" id="panels">
+        <div class="panel on" id="p-opacity">
+          <div class="slider" id="sOpacity" role="slider" tabindex="0" aria-label="Opacidad" aria-valuemin="0" aria-valuemax="100">
+            <span class="seg fill"></span><span class="seg rest"></span><span class="handle"></span><span class="bubble"></span>
+          </div>
+        </div>
+        <div class="panel" id="p-mirror">
+          <div class="chips">
+            <button class="chip" id="chipH" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M10 4v16H3z"/><path d="M14 4v16h7z" fill="currentColor"/></svg>
+              Horizontal
+            </button>
+            <button class="chip" id="chipV" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10h16L4 3z" transform="translate(0 1)"/><path d="M4 14h16l-16 7z" fill="currentColor" transform="translate(0 -1)"/></svg>
+              Vertical
+            </button>
+          </div>
+        </div>
+        <div class="panel" id="p-contour">
+          <div class="slider" id="sContour" role="slider" tabindex="0" aria-label="Contorno" aria-valuemin="0" aria-valuemax="100">
+            <span class="seg fill"></span><span class="seg rest"></span><span class="handle"></span><span class="bubble"></span>
+          </div>
+        </div>
+        <div class="panel" id="p-zoom">
+          <div class="slider" id="sZoom" role="slider" tabindex="0" aria-label="Zoom de la cámara" aria-valuemin="0" aria-valuemax="100">
+            <span class="seg fill"></span><span class="seg rest"></span><span class="handle"></span><span class="bubble"></span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="tabs" id="tabs">
+        <button class="tab" data-tool="opacity" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.2" stroke-dasharray="1.6 3.4"/></svg>
+          Opacidad
+        </button>
+        <button class="tab" data-tool="mirror" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M10 4v16H3z"/><path d="M14 4v16h7z" fill="currentColor"/></svg>
+          Espejo
+        </button>
+        <button class="tab" data-tool="contour" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 20.5l6.5-11 6.5 11z"/><path d="M7.4 20.5l2.1-3.6 2.1 3.6"/><circle cx="18" cy="5.5" r="2.5"/></svg>
+          Contorno
+        </button>
+        <button class="tab" data-tool="zoom" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="7"/><path d="M15.7 15.7L21 21M10.5 7.5v6M7.5 10.5h6"/></svg>
+          Zoom
+        </button>
+      </nav>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ---------- Pantallas ---------- */
+const screens = { pick: $('#screenPick'), perm: $('#screenPerm'), trace: $('#screenTrace') };
+function show(name){ for (const k in screens) screens[k].classList.toggle('on', k === name); }
+
+/* ---------- Elementos ---------- */
+const stage = $('#stage'), cam = $('#cam'), gest = $('#gest'), overlay = $('#overlay'), dock = $('#dock');
+const octx = overlay.getContext('2d');
+const toastEl = $('#toast'), hintEl = $('#hint');
+
+/* ---------- Estado ---------- */
+const st = { tx: 0, ty: 0, s: 1, rot: 0, fx: 1, fy: 1, locked: false, opacity: .5, contour: 0 };
+let imgW = 1, imgH = 1, bw = 1, bh = 1;
+let origCanvas = null, edgeNorm = null, edgeOut = null;
+let stream = null, track = null, caps = {};
+let hwZoom = false, zoomMin = 1, zoomMax = 5, zoomVal = 1, torchOn = false;
+let wakeLock = null, thumbUrl = null;
+
+/* ---------- Toast ---------- */
+let toastTimer = 0;
+function toast(msg, ms = 2200){
+  toastEl.textContent = msg; toastEl.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('on'), ms);
+}
+
+/* ====================================================== */
+/*  1. Elegir imagen                                       */
+/* ====================================================== */
+const fileInput = $('#file');
+$('#btnPick').onclick = () => fileInput.click();
+$('#btnChange').onclick = () => { stopCamera(); show('pick'); fileInput.click(); };
+$('#btnRetry').onclick = () => openCamera();
+
+fileInput.onchange = async () => {
+  const f = fileInput.files && fileInput.files[0];
+  if (!f) return;
+  try { await loadImage(f); }
+  catch { fileInput.value = ''; toast('No se pudo abrir esa imagen. Prueba con otra.'); return; }
+  fileInput.value = '';
+  openCamera(false);
+};
+
+function loadImage(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      prepareOverlay(im);
+      if (thumbUrl) URL.revokeObjectURL(thumbUrl);
+      thumbUrl = url; $('#permThumb').src = url;
+      resolve();
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(); };
+    im.src = url;
+  });
+}
+
+function prepareOverlay(im){
+  const MAX = 1280;
+  const k = Math.min(1, MAX / Math.max(im.naturalWidth, im.naturalHeight));
+  imgW = Math.max(1, Math.round(im.naturalWidth * k));
+  imgH = Math.max(1, Math.round(im.naturalHeight * k));
+  overlay.width = imgW; overlay.height = imgH;
+  origCanvas = document.createElement('canvas');
+  origCanvas.width = imgW; origCanvas.height = imgH;
+  origCanvas.getContext('2d').drawImage(im, 0, 0, imgW, imgH);
+  edgeNorm = null; edgeOut = null;
+  st.fx = st.fy = 1; st.locked = false;
+  syncLock(); syncMirror();
+  sOpacity.set(.5); sContour.set(0, false);
+  st.contour = 0;
+  renderOverlay();
+}
+
+/* ====================================================== */
+/*  2. Cámara                                              */
+/* ====================================================== */
+function setPerm(mode, text){
+  const err = mode === 'error';
+  $('#permSpin').hidden = err;
+  $('#permTitle').textContent = err ? 'No pudimos abrir la cámara' : 'Abriendo la cámara';
+  $('#permText').textContent = err ? text : 'Acepta el permiso de cámara cuando el navegador te lo pida.';
+  $('#btnRetry').hidden = !err; $('#btnChange').hidden = !err;
+}
+function errorMessage(e){
+  switch (e && e.name){
+    case 'NotAllowedError': case 'SecurityError':
+      return 'No diste permiso a la cámara. Actívalo en los ajustes del navegador para este sitio y toca Reintentar.';
+    case 'NotFoundError': case 'OverconstrainedError':
+      return 'No encontramos ninguna cámara en este dispositivo.';
+    case 'NotReadableError': case 'AbortError':
+      return 'Otra app está usando la cámara. Ciérrala y toca Reintentar.';
+    default: return 'Ocurrió un error al abrir la cámara. Toca Reintentar.';
+  }
+}
+
+async function openCamera(fresh = true){
+  show('perm'); setPerm('wait');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    setPerm('error', window.isSecureContext
+      ? 'Este navegador no permite usar la cámara.'
+      : 'La cámara solo funciona en páginas seguras (https). Abre calcolol.html desde un enlace https.');
+    return;
+  }
+  try {
+    stopCamera();
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+  } catch (e) { setPerm('error', errorMessage(e)); return; }
+
+  cam.srcObject = stream;
+  try { await cam.play(); } catch {}
+  track = stream.getVideoTracks()[0];
+  caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
+  setupCapabilities();
+  show('trace');
+  requestAnimationFrame(() => {
+    layoutOverlay();
+    if (fresh !== true) resetTransform(); else applyTransform();
+    showHint();
+  });
+  requestWake();
+}
+
+function stopCamera(){
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; track = null; cam.srcObject = null;
+  torchOn = false; syncFlash();
+}
+
+function setupCapabilities(){
+  hwZoom = !!caps.zoom;
+  if (hwZoom){ zoomMin = caps.zoom.min; zoomMax = Math.min(caps.zoom.max, 8); }
+  else { zoomMin = 1; zoomMax = 5; }
+  zoomVal = clamp(1, zoomMin, zoomMax);
+  sZoom.set((zoomVal - zoomMin) / (zoomMax - zoomMin), false);
+  cam.style.transform = '';
+  if (hwZoom && zoomVal > zoomMin) track.applyConstraints({ advanced: [{ zoom: zoomVal }] }).catch(() => {});
+  $('#btnFlash').classList.toggle('na', !caps.torch);
+}
+
+async function requestWake(){
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !screens.trace.classList.contains('on')) return;
+  const t = stream && stream.getVideoTracks()[0];
+  if (!t || t.readyState !== 'live') openCamera(false); else requestWake();
+});
+
+/* ====================================================== */
+/*  3. Imagen superpuesta                                  */
+/* ====================================================== */
+function layoutOverlay(){
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const free = Math.max(160, sh - dock.offsetHeight);
+  const k = Math.min(sw * .92 / imgW, free * .78 / imgH);
+  bw = imgW * k; bh = imgH * k;
+  overlay.style.width = bw + 'px'; overlay.style.height = bh + 'px';
+  overlay.style.marginLeft = (-bw / 2) + 'px'; overlay.style.marginTop = (-bh / 2) + 'px';
+}
+function resetTransform(){
+  const sh = stage.clientHeight;
+  st.tx = 0; st.ty = (sh - dock.offsetHeight) / 2 - sh / 2; st.s = 1; st.rot = 0;
+  applyTransform();
+}
+function applyTransform(){
+  overlay.style.transform =
+    `translate(${st.tx}px,${st.ty}px) rotate(${st.rot}rad) scale(${st.s * st.fx},${st.s * st.fy})`;
+  overlay.style.opacity = st.opacity;
+}
+window.addEventListener('resize', () => { if (screens.trace.classList.contains('on')) layoutOverlay(); });
+
+/* ---------- Contorno (Sobel) ---------- */
+function boxBlur(a, w, h, r){
+  const t = new Float32Array(a.length), o = new Float32Array(a.length), d = 2 * r + 1;
+  for (let y = 0; y < h; y++){
+    const row = y * w; let sum = 0;
+    for (let x = -r; x <= r; x++) sum += a[row + clamp(x, 0, w - 1)];
+    for (let x = 0; x < w; x++){
+      t[row + x] = sum / d;
+      sum += a[row + Math.min(x + r + 1, w - 1)] - a[row + Math.max(x - r, 0)];
+    }
+  }
+  for (let x = 0; x < w; x++){
+    let sum = 0;
+    for (let y = -r; y <= r; y++) sum += t[clamp(y, 0, h - 1) * w + x];
+    for (let y = 0; y < h; y++){
+      o[y * w + x] = sum / d;
+      sum += t[Math.min(y + r + 1, h - 1) * w + x] - t[Math.max(y - r, 0) * w + x];
+    }
+  }
+  return o;
+}
+function computeEdges(){
+  const w = imgW, h = imgH;
+  const src = origCanvas.getContext('2d').getImageData(0, 0, w, h).data;
+  let g = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < g.length; i++, j += 4){
+    const a = src[j + 3] / 255, ia = 255 * (1 - a);
+    g[i] = .299 * (src[j] * a + ia) + .587 * (src[j + 1] * a + ia) + .114 * (src[j + 2] * a + ia);
+  }
+  g = boxBlur(boxBlur(g, w, h, 2), w, h, 1);
+  const mag = new Float32Array(w * h);
+  let max = 0;
+  for (let y = 1; y < h - 1; y++){
+    for (let x = 1; x < w - 1; x++){
+      const i = y * w + x;
+      const gx = -g[i - w - 1] + g[i - w + 1] - 2 * g[i - 1] + 2 * g[i + 1] - g[i + w - 1] + g[i + w + 1];
+      const gy = -g[i - w - 1] - 2 * g[i - w] - g[i - w + 1] + g[i + w - 1] + 2 * g[i + w] + g[i + w + 1];
+      const m = Math.sqrt(gx * gx + gy * gy);
+      mag[i] = m; if (m > max) max = m;
+    }
+  }
+  // normaliza con el percentil 97 para que funcione igual en fotos claras y oscuras
+  const bins = new Uint32Array(1024);
+  const scale = 1023 / (max || 1);
+  for (let i = 0; i < mag.length; i++) bins[(mag[i] * scale) | 0]++;
+  let acc = 0, p = max || 1; const goal = mag.length * .97;
+  for (let b = 0; b < 1024; b++){ acc += bins[b]; if (acc >= goal){ p = (b + 1) / scale; break; } }
+  for (let i = 0; i < mag.length; i++) mag[i] = Math.min(1.5, mag[i] / p);
+  edgeNorm = mag;
+  edgeOut = octx.createImageData(w, h);
+}
+let renderQueued = false;
+function renderOverlay(){
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    if (!origCanvas) return;
+    if (st.contour > .001){
+      if (!edgeNorm) computeEdges();
+      const out = edgeOut.data, n = edgeNorm;
+      const t = .62 - .56 * st.contour, inv = 1 / .3;
+      for (let i = 0, j = 0; i < n.length; i++, j += 4){
+        let v = (n[i] - t) * inv; v = v < 0 ? 0 : v > 1 ? 1 : v;
+        const sm = v * v * (3 - 2 * v);
+        const gv = 255 - sm * 235;
+        out[j] = out[j + 1] = out[j + 2] = gv; out[j + 3] = 255;
+      }
+      octx.putImageData(edgeOut, 0, 0);
+      overlay.style.mixBlendMode = 'multiply'; // el blanco desaparece y solo quedan las líneas
+    } else {
+      octx.clearRect(0, 0, imgW, imgH);
+      octx.drawImage(origCanvas, 0, 0);
+      overlay.style.mixBlendMode = 'normal';
+    }
+  });
+}
+
+/* ====================================================== */
+/*  Gestos: 1 dedo mueve, 2 dedos mueven + escalan + giran */
+/* ====================================================== */
+const ptrs = new Map();
+let base = null, lockToastAt = 0;
+
+function rebase(){
+  const pts = [...ptrs.values()];
+  if (pts.length === 0){ base = null; return; }
+  if (pts.length === 1){ base = { n: 1, x: pts[0].x, y: pts[0].y, tx: st.tx, ty: st.ty }; return; }
+  const [a, b] = pts;
+  base = {
+    n: 2, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
+    d: Math.hypot(b.x - a.x, b.y - a.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x),
+    tx: st.tx, ty: st.ty, s: st.s, rot: st.rot
+  };
+}
+gest.addEventListener('pointerdown', e => {
+  hideHint();
+  if (st.locked){
+    const now = Date.now();
+    if (now - lockToastAt > 1800){ toast('Imagen bloqueada. Toca el candado para moverla.'); lockToastAt = now; }
+    return;
+  }
+  gest.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  rebase();
+});
+gest.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId) || !base) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const pts = [...ptrs.values()];
+  if (base.n === 1 || pts.length < 2){
+    if (base.n !== 1){ rebase(); return; }
+    st.tx = base.tx + (pts[0].x - base.x);
+    st.ty = base.ty + (pts[0].y - base.y);
+  } else {
+    if (base.n !== 2){ rebase(); return; }
+    const [a, b] = pts;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const ns = clamp(base.s * d / base.d, .05, 12);
+    const kk = ns / base.s;
+    let dth = Math.atan2(b.y - a.y, b.x - a.x) - base.ang;
+    dth = Math.atan2(Math.sin(dth), Math.cos(dth));
+    const cx = stage.clientWidth / 2, cy = stage.clientHeight / 2;
+    const vx = cx + base.tx - base.mx, vy = cy + base.ty - base.my;
+    const cos = Math.cos(dth), sin = Math.sin(dth);
+    st.tx = mx + kk * (vx * cos - vy * sin) - cx;
+    st.ty = my + kk * (vx * sin + vy * cos) - cy;
+    st.s = ns; st.rot = base.rot + dth;
+  }
+  applyTransform();
+});
+const endPtr = e => { if (ptrs.delete(e.pointerId)) rebase(); };
+gest.addEventListener('pointerup', endPtr);
+gest.addEventListener('pointercancel', endPtr);
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- Pista de gestos ---------- */
+let hintTimer = 0;
+function showHint(){ hintEl.classList.remove('off'); clearTimeout(hintTimer); hintTimer = setTimeout(hideHint, 6000); }
+function hideHint(){ hintEl.classList.add('off'); clearTimeout(hintTimer); }
+
+/* ====================================================== */
+/*  Controles: sliders                                     */
+/* ====================================================== */
+function makeSlider(el, { value, format, onInput }){
+  const bubble = el.querySelector('.bubble');
+  let p = value;
+  function set(v, emit = true){
+    p = clamp(v, 0, 1);
+    el.style.setProperty('--p', p);
+    el.setAttribute('aria-valuenow', Math.round(p * 100));
+    bubble.textContent = format(p);
+    if (emit) onInput(p);
+  }
+  function fromEvent(e){
+    const r = el.getBoundingClientRect();
+    set((e.clientX - r.left - 3) / (r.width - 6));
+  }
+  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); el.classList.add('drag'); fromEvent(e); });
+  el.addEventListener('pointermove', e => { if (el.hasPointerCapture(e.pointerId)) fromEvent(e); });
+  const end = () => el.classList.remove('drag');
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp'){ set(p + .02); e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown'){ set(p - .02); e.preventDefault(); }
+  });
+  set(value, false);
+  return { set, get: () => p };
+}
+
+const sOpacity = makeSlider($('#sOpacity'), {
+  value: .5, format: p => Math.round(p * 100) + '%',
+  onInput: p => { st.opacity = p; overlay.style.opacity = p; }
+});
+const sContour = makeSlider($('#sContour'), {
+  value: 0, format: p => p < .01 ? 'Sin contorno' : Math.round(p * 100) + '%',
+  onInput: p => { st.contour = p; renderOverlay(); }
+});
+const sZoom = makeSlider($('#sZoom'), {
+  value: 0, format: p => (zoomMin + p * (zoomMax - zoomMin)).toFixed(1) + '×',
+  onInput: p => applyZoom(zoomMin + p * (zoomMax - zoomMin))
+});
+
+function applyZoom(z){
+  zoomVal = z;
+  if (hwZoom){
+    cam.style.transform = '';
+    if (track) track.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {});
+  } else {
+    cam.style.transform = `scale(${z})`;
+  }
+}
+
+/* ---------- Pestañas ---------- */
+let activeTool = 'opacity';
+const tabs = document.querySelectorAll('.tab');
+function setTool(t){
+  const wasContourOff = t === 'contour' && st.contour < .01;
+  activeTool = (activeTool === t) ? null : t;
+  tabs.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === activeTool)));
+  $('#panels').classList.toggle('closed', !activeTool);
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === 'p-' + activeTool));
+  if (activeTool === 'contour' && wasContourOff) sContour.set(.5);
+  // el candado y los botones se desplazan con el panel: recoloca la imagen si sigue sin tocarse
+  requestAnimationFrame(layoutOverlay);
+}
+tabs.forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+/* ---------- Espejo ---------- */
+function syncMirror(){
+  $('#chipH').setAttribute('aria-pressed', String(st.fx < 0));
+  $('#chipV').setAttribute('aria-pressed', String(st.fy < 0));
+}
+$('#chipH').onclick = () => { st.fx *= -1; syncMirror(); applyTransform(); };
+$('#chipV').onclick = () => { st.fy *= -1; syncMirror(); applyTransform(); };
+
+/* ---------- Candado ---------- */
+const btnLock = $('#btnLock');
+function syncLock(){
+  btnLock.classList.toggle('on', st.locked);
+  btnLock.setAttribute('aria-pressed', String(st.locked));
+  btnLock.setAttribute('aria-label', st.locked ? 'Desbloquear imagen' : 'Bloquear imagen');
+  btnLock.querySelector('.ico-open').style.display = st.locked ? 'none' : 'block';
+  btnLock.querySelector('.ico-closed').style.display = st.locked ? 'block' : 'none';
+}
+btnLock.onclick = () => {
+  st.locked = !st.locked; ptrs.clear(); base = null; syncLock();
+  toast(st.locked ? 'Imagen bloqueada' : 'Imagen desbloqueada', 1400);
+};
+
+/* ---------- Linterna ---------- */
+const btnFlash = $('#btnFlash');
+function syncFlash(){
+  btnFlash.classList.toggle('on', torchOn);
+  btnFlash.setAttribute('aria-pressed', String(torchOn));
+  btnFlash.querySelector('.ico-off').style.display = torchOn ? 'none' : 'block';
+  btnFlash.querySelector('.ico-on').style.display = torchOn ? 'block' : 'none';
+}
+btnFlash.onclick = async () => {
+  if (!caps.torch){ toast('Este navegador no puede encender la linterna'); return; }
+  try {
+    torchOn = !torchOn;
+    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+  } catch { torchOn = false; toast('No se pudo encender la linterna'); }
+  syncFlash();
+};
+
+/* ====================================================== */
+/*  Foto y video (solo la cámara, sin la imagen superpuesta) */
+/* ====================================================== */
+function sourceRect(){
+  const vw = cam.videoWidth, vh = cam.videoHeight;
+  const sa = stage.clientWidth / stage.clientHeight;
+  let sw, sh;
+  if (vw / vh > sa){ sh = vh; sw = vh * sa; } else { sw = vw; sh = vw / sa; }
+  if (!hwZoom){ sw /= zoomVal; sh /= zoomVal; }
+  return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh };
+}
+
+$('#btnPhoto').onclick = () => {
+  if (!cam.videoWidth){ toast('La cámara aún no está lista'); return; }
+  const r = sourceRect(), k = Math.min(1, 4096 / Math.max(r.sw, r.sh));
+  const c = document.createElement('canvas');
+  c.width = Math.round(r.sw * k); c.height = Math.round(r.sh * k);
+  c.getContext('2d').drawImage(cam, r.sx, r.sy, r.sw, r.sh, 0, 0, c.width, c.height);
+  const sh = $('#shutter'); sh.classList.remove('go'); void sh.offsetWidth; sh.classList.add('go');
+  c.toBlob(b => { if (b) showResult('photo', b); else toast('No se pudo tomar la foto'); }, 'image/jpeg', .92);
+};
+
+let rec = null, recChunks = [], recTimer = 0, recRAF = 0, recDiscard = false;
+$('#btnVideo').onclick = () => { rec && rec.state === 'recording' ? rec.stop() : startRec(); };
+
+function startRec(){
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream){ toast('Tu navegador no puede grabar video'); return; }
+  if (!cam.videoWidth){ toast('La cámara aún no está lista'); return; }
+  const r = sourceRect(), k = Math.min(1, 1280 / Math.max(r.sw, r.sh));
+  const rc = document.createElement('canvas');
+  rc.width = Math.max(2, Math.round(r.sw * k) & ~1); rc.height = Math.max(2, Math.round(r.sh * k) & ~1);
+  const rctx = rc.getContext('2d');
+  const draw = () => {
+    const q = sourceRect();
+    rctx.drawImage(cam, q.sx, q.sy, q.sw, q.sh, 0, 0, rc.width, rc.height);
+    recRAF = requestAnimationFrame(draw);
+  };
+  draw();
+  const mime = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+    .find(t => MediaRecorder.isTypeSupported(t));
+  try { rec = new MediaRecorder(rc.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : undefined); }
+  catch { cancelAnimationFrame(recRAF); toast('No se pudo iniciar la grabación'); return; }
+  recChunks = []; recDiscard = false;
+  rec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+  rec.onstop = () => {
+    cancelAnimationFrame(recRAF); clearInterval(recTimer);
+    $('#pill').classList.remove('rec'); $('#recInfo').hidden = true;
+    if (!recDiscard && recChunks.length){
+      showResult('video', new Blob(recChunks, { type: rec.mimeType || mime || 'video/mp4' }));
+    }
+    rec = null;
+  };
+  rec.start(1000);
+  const t0 = Date.now();
+  $('#recTime').textContent = '00:00'; $('#recInfo').hidden = false; $('#pill').classList.add('rec');
+  $('#result').hidden = true;
+  recTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $('#recTime').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }, 500);
+}
+
+/* ---------- Resultado + guardar ---------- */
+let pending = null, resultUrl = null;
+function showResult(kind, blob){
+  if (resultUrl) URL.revokeObjectURL(resultUrl);
+  resultUrl = URL.createObjectURL(blob); pending = { kind, blob };
+  const th = $('#resThumb'); th.innerHTML = '';
+  if (kind === 'photo'){ const i = new Image(); i.src = resultUrl; th.appendChild(i); }
+  else th.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="13.5" height="12" rx="2.5"/><path d="M17 10.2L22 7v10l-5-3.2z"/></svg>';
+  $('#resText').textContent = kind === 'photo' ? 'Foto lista' : 'Video listo';
+  $('#result').hidden = false;
+}
+$('#resClose').onclick = () => { $('#result').hidden = true; };
+$('#resSave').onclick = async () => {
+  if (!pending) return;
+  const { kind, blob } = pending;
+  const ext = kind === 'photo' ? 'jpg' : (blob.type.includes('mp4') ? 'mp4' : 'webm');
+  const name = `calcolol-${Date.now()}.${ext}`;
+  const file = new File([blob], name, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try { await navigator.share({ files: [file] }); return; }
+    catch (e){ if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = resultUrl; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  toast('Guardado en descargas');
+};
+
+/* ---------- Volver ---------- */
+$('#btnBack').onclick = () => {
+  if (rec && rec.state === 'recording'){ recDiscard = true; rec.stop(); }
+  $('#result').hidden = true;
+  if (wakeLock){ wakeLock.release().catch(() => {}); wakeLock = null; }
+  stopCamera(); show('pick');
+};
+
+syncLock(); syncFlash(); syncMirror();
+})();
+</script>
+</body>
+</html>
